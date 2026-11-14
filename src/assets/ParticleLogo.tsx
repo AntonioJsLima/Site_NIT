@@ -49,12 +49,12 @@ function createImageTargets(image: HTMLImageElement, width: number, height: numb
 
 // Particle feel is kept together here so it is straightforward to tune later.
 const PHYSICS = {
-  sampleDesktop: 2,
+  sampleDesktop: 1,
   sampleMobile: 3,
-  maxDesktop: 26000,
-  maxMobile: 12000,
-  pointDesktop: 2.1,
-  pointMobile: 1.8,
+  maxDesktop: 8000,
+  maxMobile: 10000,
+  pointDesktop: 2.35,
+  pointMobile: 2.0,
   returnIdle: 0.024,
   returnActive: 0.0026,
   scrollEase: 0.06,
@@ -97,6 +97,7 @@ export function ParticleLogo() {
     const trail: TrailPoint[] = []
     let current = new Float32Array()
     let targets = new Float32Array()
+    let targetMasks: Float32Array[] = []
     let velocities = new Float32Array()
     let seeds = new Float32Array()
     let geometry = new THREE.BufferGeometry()
@@ -113,11 +114,14 @@ export function ParticleLogo() {
 
     const logo = new Image()
     logo.src = '/images/Logo_NIT.jpg'
-    const backgroundImage = new Image()
-    backgroundImage.src = '/images/Fundo_Tela01.jpg'
+    const backgroundImages = ['/images/Fundo_Tela01.jpg', '/images/Fundo_Tela02.jpg'].map((src) => {
+      const image = new Image()
+      image.src = src
+      return image
+    })
 
     const buildParticles = () => {
-      if (!logo.complete || !logo.naturalWidth || !backgroundImage.complete || !backgroundImage.naturalWidth) return
+      if (!logo.complete || !logo.naturalWidth || backgroundImages.some((image) => !image.complete)) return
       const source = document.createElement('canvas')
       source.width = logo.naturalWidth
       source.height = logo.naturalHeight
@@ -177,7 +181,12 @@ export function ParticleLogo() {
         }
         seeds[i] = Math.random()
       })
-      const imageTargets = createImageTargets(backgroundImage, width, height, count, mobile)
+      const imageTargets: Float32Array[] = []
+      backgroundImages.forEach((image, index) => {
+        if (image.naturalWidth) imageTargets.push(createImageTargets(image, width, height, count, mobile))
+        else imageTargets.push((index === 0 ? targets : imageTargets[index - 1]).slice())
+      })
+      targetMasks = [targets, ...imageTargets]
 
       geometry.dispose()
       geometry = new THREE.BufferGeometry()
@@ -216,7 +225,7 @@ export function ParticleLogo() {
       points.frustumCulled = false
       scene.clear()
       scene.add(points)
-      ;(points.userData as { imageTargets?: Float32Array }).imageTargets = imageTargets
+      ;(points.userData as { targetMasks?: Float32Array[] }).targetMasks = targetMasks
     }
 
     const resize = () => {
@@ -230,7 +239,7 @@ export function ParticleLogo() {
       camera.top = height / 2
       camera.bottom = -height / 2
       camera.updateProjectionMatrix()
-      if (logo.complete && backgroundImage.complete) buildParticles()
+      if (logo.complete && backgroundImages.every((image) => image.complete)) buildParticles()
     }
 
     const addPointer = (x: number, y: number) => {
@@ -257,7 +266,8 @@ export function ParticleLogo() {
     const updateScrollTarget = () => {
       if (!hero) return
       const heroHeight = Math.max(1, hero.offsetHeight)
-      scrollTarget = THREE.MathUtils.clamp(-hero.getBoundingClientRect().top / heroHeight, 0, 1)
+      const lastStage = Math.max(0, (scroller?.querySelectorAll('section').length ?? 1) - 1)
+      scrollTarget = THREE.MathUtils.clamp(-hero.getBoundingClientRect().top / heroHeight, 0, lastStage)
     }
 
     const animate = (now: number) => {
@@ -267,7 +277,12 @@ export function ParticleLogo() {
       lastFrame = now
       scrollProgress += (scrollTarget - scrollProgress) * PHYSICS.scrollEase
       const transitioning = Math.abs(scrollTarget - scrollProgress) > 0.006
-      const imageTargets = (points.userData as { imageTargets?: Float32Array }).imageTargets
+      const masks = (points.userData as { targetMasks?: Float32Array[] }).targetMasks ?? targetMasks
+      const fromStage = Math.min(Math.floor(scrollProgress), masks.length - 1)
+      const toStage = Math.min(fromStage + 1, masks.length - 1)
+      const stageMix = THREE.MathUtils.clamp(scrollProgress - fromStage, 0, 1)
+      const fromMask = masks[fromStage] ?? targets
+      const toMask = masks[toStage] ?? fromMask
       const activelyMoving = now - lastPointerMove < 190
       const recentlyTouched = now - lastPointerMove < 520
       // Preserve a short momentum window after each cursor gesture, as in the reference.
@@ -281,8 +296,8 @@ export function ParticleLogo() {
         let vx = velocities[i3], vy = velocities[i3 + 1], vz = velocities[i3 + 2]
         const driftX = recentlyTouched ? 0 : Math.sin(now * 0.004990 + seeds[i] * 19) * PHYSICS.idleDrift
         const driftY = recentlyTouched ? 0 : Math.cos(now * 0.004820  + seeds[i] * 31) * PHYSICS.idleDrift
-        const targetX = targets[i3] + ((imageTargets?.[i3] ?? targets[i3]) - targets[i3]) * scrollProgress + driftX
-        const targetY = targets[i3 + 1] + ((imageTargets?.[i3 + 1] ?? targets[i3 + 1]) - targets[i3 + 1]) * scrollProgress + driftY
+        const targetX = fromMask[i3] + (toMask[i3] - fromMask[i3]) * stageMix + driftX
+        const targetY = fromMask[i3 + 1] + (toMask[i3 + 1] - fromMask[i3 + 1]) * stageMix + driftY
         vx += (targetX - x) * returnForce * dt
         vy += (targetY - y) * returnForce * dt
         vz += -current[i3 + 2] * returnForce * dt
@@ -395,9 +410,14 @@ export function ParticleLogo() {
 
     const buildWhenImagesReady = () => { if (!disposed) buildParticles() }
     logo.onload = buildWhenImagesReady
-    backgroundImage.onload = buildWhenImagesReady
+    backgroundImages.forEach((image, index) => {
+      image.onload = buildWhenImagesReady
+      image.onerror = () => {
+        console.error(`Não consegui carregar ${index === 0 ? '/images/Fundo_Tela01.jpg' : '/images/Fundo_Tela02.jpg'}`)
+        buildWhenImagesReady()
+      }
+    })
     logo.onerror = () => console.error('Não consegui carregar /images/Logo_NIT.jpg')
-    backgroundImage.onerror = () => console.error('Não consegui carregar /images/Fundo_Tela01.jpg')
     const resizeObserver = new ResizeObserver(resize)
     resizeObserver.observe(container)
     scroller?.addEventListener('scroll', updateScrollTarget, { passive: true })

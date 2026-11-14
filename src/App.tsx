@@ -10,7 +10,7 @@ function App() {
     const screen = screenRef.current
     if (!screen) return
 
-    const sections = screen.querySelectorAll<HTMLElement>('.hero[id], .about-section[id]')
+    const sections = screen.querySelectorAll<HTMLElement>('section[id]')
     const observer = new IntersectionObserver((entries) => {
       const mostVisible = entries
         .filter((entry) => entry.isIntersecting)
@@ -32,8 +32,8 @@ function App() {
 
         <nav className="navigation" aria-label="Navegação principal">
           <a href="#inicio" aria-current={activeSection === 'inicio' ? 'page' : undefined}>Início</a>
-          <a href="#sobre-trilha" aria-current={activeSection === 'sobre-trilha' ? 'page' : undefined}>Sobre/Trilha</a>
-          <a href="#gestao-documentos">Gestão de Documentos</a>
+          <a href="#sobre" aria-current={activeSection === 'sobre' ? 'page' : undefined}>Sobre</a>
+          <a href="#gestao-documentos" aria-current={activeSection === 'gestao-documentos' ? 'page' : undefined}>Gestão de Documentos</a>
         </nav>
 
         <a className="leader-link" href="#lider">Responsável</a>
@@ -61,8 +61,66 @@ function App() {
         </div>
       </section>
 
-      <section className="about-section" id="sobre-trilha" aria-label="Sobre e Trilha">
-        <div className="about-card" aria-label="Área de conteúdo em preparação" />
+      <section className="about-section" id="sobre" aria-label="Sobre o NIT">
+        <article className="about-card">
+          <h1>💡 <span>Sobre o NIT</span></h1>
+          <p className="about-intro">
+            O Núcleo de Inovação Tecnológica – NIT é a instância de apoio a gestão da inovação e da
+            propriedade intelectual, orientação e articulação entre as áreas envolvidas.
+          </p>
+
+          <p className="about-premise">
+            <strong>Premissa Central:</strong> Art. 6º A Política do NIT tem por premissa orientar,
+            estruturar e fortalecer a atuação do NIT como instância institucional de apoio,
+            articulação, orientação e gestão dos temas relacionados à inovação, propriedade
+            intelectual, pesquisa, desenvolvimento tecnológico e transferência de tecnologia.
+          </p>
+
+          <div className="about-actions">
+            <button className="about-action about-action--primary" type="button">
+              Estrutura e Operação <span aria-hidden="true">↗</span>
+            </button>
+            <div className="about-more-wrap">
+              <button className="about-action about-action--secondary" type="button" aria-describedby="knowledge-tooltip">
+                Saiba Mais <span aria-hidden="true">↗</span>
+              </button>
+              <div className="knowledge-tooltip" id="knowledge-tooltip" role="tooltip">
+                <strong>TRILHA DE CONHECIMENTO</strong>
+                <span>Acesse a Trilha de Conhecimento do NIT e descubra os principais conceitos, fundamentos e oportunidades da inovação.</span>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section className="documents-section" id="gestao-documentos" aria-label="Gestão de Documentos">
+        <div className="documents-content">
+          <header className="documents-heading">
+            <h1><span aria-hidden="true">📁</span> Gestão de Documentos</h1>
+            <p>Acesse os instrumentos e documentos de referência para a gestão da inovação e da propriedade intelectual.</p>
+          </header>
+
+          <div className="document-cards">
+            <article className="document-card">
+              <span className="document-category">DIRETRIZES INSTITUCIONAIS</span>
+              <h2>Políticas do NIT</h2>
+              <p>Diretrizes, princípios e orientações institucionais do NIT.</p>
+              <button className="document-card-action" type="button" aria-label="Políticas do NIT: destino ainda não definido">→</button>
+            </article>
+            <article className="document-card">
+              <span className="document-category">PROPRIEDADE INTELECTUAL</span>
+              <h2>Procedimentos do NIT</h2>
+              <p>Modelos para Submissão, Identificação de PI e Busca de anterioridade.</p>
+              <button className="document-card-action" type="button" aria-label="Procedimentos do NIT: destino ainda não definido">→</button>
+            </article>
+            <article className="document-card">
+              <span className="document-category">MODELOS JURÍDICOS PARA INOVAÇÃO</span>
+              <h2>Modelos de Instrumentos jurídicos</h2>
+              <p>Instrumentos jurídicos de CT&amp;I baseados nas referências da AGU e adaptados para o SESI/SENAI.</p>
+              <button className="document-card-action" type="button" aria-label="Modelos de Instrumentos jurídicos: destino ainda não definido">→</button>
+            </article>
+          </div>
+        </div>
       </section>
     </main>
   )
