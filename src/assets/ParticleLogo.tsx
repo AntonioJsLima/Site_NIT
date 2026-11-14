@@ -24,22 +24,27 @@ function createImageTargets(image: HTMLImageElement, width: number, height: numb
   const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data
   const candidates: Array<[number, number]> = []
   const gap = mobile ? 3 : 2
+  let candidateCount = 0
   for (let y = 0; y < canvas.height; y += gap) {
     for (let x = 0; x < canvas.width; x += gap) {
       const index = (y * canvas.width + x) * 4
-      if (pixels[index] > 105 && pixels[index + 1] > 105 && pixels[index + 2] > 105) candidates.push([x, y])
+      if (pixels[index] > 105 && pixels[index + 1] > 105 && pixels[index + 2] > 105) {
+        candidateCount++
+        if (candidates.length < count) candidates.push([x, y])
+        else {
+          // Reservoir sampling caps memory at the particle count instead of
+          // allocating one JavaScript tuple for every bright image pixel.
+          const replacement = Math.floor(Math.random() * candidateCount)
+          if (replacement < count) candidates[replacement] = [x, y]
+        }
+      }
     }
   }
 
   const targets = new Float32Array(count * 3)
   if (!candidates.length) return targets
-  // Randomize particle-to-pixel correspondence so the transition feels like a morph, not a wipe.
-  for (let i = candidates.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[candidates[i], candidates[j]] = [candidates[j], candidates[i]]
-  }
   for (let i = 0; i < count; i++) {
-    const [x, y] = candidates[Math.floor((i * candidates.length) / count) % candidates.length]
+    const [x, y] = candidates[i % candidates.length]
     const i3 = i * 3
     targets[i3] = x - width / 2 + (Math.random() - 0.5) * gap * 0.55
     targets[i3 + 1] = -(y - height / 2) + (Math.random() - 0.5) * gap * 0.55
@@ -51,13 +56,15 @@ function createImageTargets(image: HTMLImageElement, width: number, height: numb
 const PHYSICS = {
   sampleDesktop: 1,
   sampleMobile: 3,
-  maxDesktop: 8000,
+  maxDesktop: 10500,
   maxMobile: 10000,
   pointDesktop: 2.35,
   pointMobile: 2.0,
   returnIdle: 0.024,
   returnActive: 0.0026,
   scrollEase: 0.06,
+  screenTransitionReturn: 0.018,
+  screenTransitionEase: 0.14,
   friction: 0.940,
   maxSpeed: 0.02,
   pointerFollow: 0.00055,
@@ -93,6 +100,8 @@ export function ParticleLogo() {
     let lastPointerMove = 0
     let scrollTarget = 0
     let scrollProgress = 0
+    let backgroundTargetsReady = false
+    let backgroundTargetsScheduled = false
     let pointer = { x: -10000, y: -10000, active: false, lastX: 0, lastY: 0, lastTime: 0 }
     const trail: TrailPoint[] = []
     let current = new Float32Array()
@@ -121,7 +130,7 @@ export function ParticleLogo() {
     })
 
     const buildParticles = () => {
-      if (!logo.complete || !logo.naturalWidth || backgroundImages.some((image) => !image.complete)) return
+      if (!logo.complete || !logo.naturalWidth) return
       const source = document.createElement('canvas')
       source.width = logo.naturalWidth
       source.height = logo.naturalHeight
@@ -131,24 +140,34 @@ export function ParticleLogo() {
       const pixels = context.getImageData(0, 0, source.width, source.height).data
       const gap = mobile ? PHYSICS.sampleMobile : PHYSICS.sampleDesktop
       const samples: Array<[number, number]> = []
+      const sampleLimit = mobile ? PHYSICS.maxMobile : PHYSICS.maxDesktop
+      let sampleCount = 0
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
 
       for (let y = 0; y < source.height; y += gap) {
         for (let x = 0; x < source.width; x += gap) {
           const index = (y * source.width + x) * 4
           // The NIT source is a light mark on navy; this threshold excludes its dark background.
           if (pixels[index] > 95 && pixels[index + 1] > 100 && pixels[index + 2] > 105) {
-            samples.push([x + (Math.random() - 0.5) * gap * 0.45, y + (Math.random() - 0.5) * gap * 0.45])
+            const sampleX = x + (Math.random() - 0.5) * gap * 0.45
+            const sampleY = y + (Math.random() - 0.5) * gap * 0.45
+            minX = Math.min(minX, sampleX)
+            maxX = Math.max(maxX, sampleX)
+            minY = Math.min(minY, sampleY)
+            maxY = Math.max(maxY, sampleY)
+            sampleCount++
+            if (samples.length < sampleLimit) samples.push([sampleX, sampleY])
+            else {
+              // Keep only the final particle budget while scanning the source.
+              const replacement = Math.floor(Math.random() * sampleCount)
+              if (replacement < sampleLimit) samples[replacement] = [sampleX, sampleY]
+            }
           }
         }
       }
       if (!samples.length) return
 
-      const step = Math.max(1, Math.ceil(samples.length / (mobile ? PHYSICS.maxMobile : PHYSICS.maxDesktop)))
-      const selected = samples.filter((_, index) => index % step === 0)
-      const minX = Math.min(...selected.map(([x]) => x))
-      const maxX = Math.max(...selected.map(([x]) => x))
-      const minY = Math.min(...selected.map(([, y]) => y))
-      const maxY = Math.max(...selected.map(([, y]) => y))
+      const selected = samples
       const logoWidth = maxX - minX
       const logoHeight = maxY - minY
       // Fit the complete mark inside the canvas while preserving its original proportions.
@@ -181,12 +200,11 @@ export function ParticleLogo() {
         }
         seeds[i] = Math.random()
       })
-      const imageTargets: Float32Array[] = []
-      backgroundImages.forEach((image, index) => {
-        if (image.naturalWidth) imageTargets.push(createImageTargets(image, width, height, count, mobile))
-        else imageTargets.push((index === 0 ? targets : imageTargets[index - 1]).slice())
-      })
-      targetMasks = [targets, ...imageTargets]
+      // Create the visible logo immediately; the full-screen target masks are
+      // generated later during browser idle time so their pixel scans do not
+      // block the first frames after opening the site.
+      backgroundTargetsReady = false
+      targetMasks = [targets, targets.slice(), targets.slice()]
 
       geometry.dispose()
       geometry = new THREE.BufferGeometry()
@@ -228,10 +246,52 @@ export function ParticleLogo() {
       ;(points.userData as { targetMasks?: Float32Array[] }).targetMasks = targetMasks
     }
 
+    const runWhenIdle = (callback: () => void) => {
+      const idleWindow = window as Window & {
+        requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number
+      }
+      if (idleWindow.requestIdleCallback) idleWindow.requestIdleCallback(callback, { timeout: 1600 })
+      else window.setTimeout(callback, 250)
+    }
+
+    const scheduleBackgroundTargets = () => {
+      if (disposed || !points || backgroundTargetsReady || backgroundTargetsScheduled) return
+      if (!backgroundImages.every((image) => image.complete)) return
+      backgroundTargetsScheduled = true
+
+      const createTarget = (index: number) => {
+        if (disposed || !points) return
+        const image = backgroundImages[index]
+        const fallback = index === 0 ? targets : targetMasks[index]
+        targetMasks[index + 1] = image.naturalWidth
+          ? createImageTargets(image, width, height, current.length / 3, mobile)
+          : fallback.slice()
+        ;(points.userData as { targetMasks?: Float32Array[] }).targetMasks = targetMasks
+      }
+
+      // Generate one screen mask per idle period, leaving frames between the
+      // full-resolution image scans.
+      runWhenIdle(() => {
+        if (disposed) return
+        createTarget(0)
+        window.requestAnimationFrame(() => {
+          runWhenIdle(() => {
+            if (disposed) return
+            createTarget(1)
+            backgroundTargetsReady = true
+            backgroundTargetsScheduled = false
+          })
+        })
+      })
+    }
+
     const resize = () => {
       const rect = container.getBoundingClientRect()
-      width = Math.max(1, rect.width)
-      height = Math.max(1, rect.height)
+      const nextWidth = Math.max(1, rect.width)
+      const nextHeight = Math.max(1, rect.height)
+      const sizeChanged = Math.abs(nextWidth - width) > 1 || Math.abs(nextHeight - height) > 1
+      width = nextWidth
+      height = nextHeight
       mobile = width < 650
       renderer.setSize(width, height, false)
       camera.left = -width / 2
@@ -239,7 +299,8 @@ export function ParticleLogo() {
       camera.top = height / 2
       camera.bottom = -height / 2
       camera.updateProjectionMatrix()
-      if (logo.complete && backgroundImages.every((image) => image.complete)) buildParticles()
+      if (logo.complete && logo.naturalWidth && (!points || sizeChanged)) buildParticles()
+      if (points) scheduleBackgroundTargets()
     }
 
     const addPointer = (x: number, y: number) => {
@@ -275,7 +336,9 @@ export function ParticleLogo() {
       if (!points || !material || !current.length) return
       const dt = Math.min((now - (lastFrame || now)) / 16.67, 2.5)
       lastFrame = now
-      scrollProgress += (scrollTarget - scrollProgress) * PHYSICS.scrollEase
+      const transitionStarted = Math.abs(scrollTarget - scrollProgress) > 0.006
+      const progressEase = transitionStarted ? PHYSICS.screenTransitionEase : PHYSICS.scrollEase
+      scrollProgress += (scrollTarget - scrollProgress) * progressEase
       const transitioning = Math.abs(scrollTarget - scrollProgress) > 0.006
       const masks = (points.userData as { targetMasks?: Float32Array[] }).targetMasks ?? targetMasks
       const fromStage = Math.min(Math.floor(scrollProgress), masks.length - 1)
@@ -286,7 +349,11 @@ export function ParticleLogo() {
       const activelyMoving = now - lastPointerMove < 190
       const recentlyTouched = now - lastPointerMove < 520
       // Preserve a short momentum window after each cursor gesture, as in the reference.
-      const returnForce = recentlyTouched || transitioning ? PHYSICS.returnActive : PHYSICS.returnIdle
+      const returnForce = transitioning
+        ? PHYSICS.screenTransitionReturn
+        : recentlyTouched
+          ? PHYSICS.returnActive
+          : PHYSICS.returnIdle
       const pointerRadius = mobile ? PHYSICS.pointerRadiusMobile : PHYSICS.pointerRadiusDesktop
       const trailRadius = mobile ? PHYSICS.trailRadiusMobile : PHYSICS.trailRadiusDesktop
 
@@ -408,13 +475,16 @@ export function ParticleLogo() {
       renderer.render(scene, camera)
     }
 
-    const buildWhenImagesReady = () => { if (!disposed) buildParticles() }
-    logo.onload = buildWhenImagesReady
+    logo.onload = () => {
+      if (disposed) return
+      buildParticles()
+      scheduleBackgroundTargets()
+    }
     backgroundImages.forEach((image, index) => {
-      image.onload = buildWhenImagesReady
+      image.onload = scheduleBackgroundTargets
       image.onerror = () => {
         console.error(`Não consegui carregar ${index === 0 ? '/images/Fundo_Tela01.jpg' : '/images/Fundo_Tela02.jpg'}`)
-        buildWhenImagesReady()
+        scheduleBackgroundTargets()
       }
     })
     logo.onerror = () => console.error('Não consegui carregar /images/Logo_NIT.jpg')
@@ -423,6 +493,10 @@ export function ParticleLogo() {
     scroller?.addEventListener('scroll', updateScrollTarget, { passive: true })
     window.addEventListener('scroll', updateScrollTarget, { passive: true })
     resize()
+    if (!points && logo.complete && logo.naturalWidth) {
+      buildParticles()
+      scheduleBackgroundTargets()
+    }
     updateScrollTarget()
     window.addEventListener('pointermove', onPointerMove, { passive: true })
     window.addEventListener('pointerleave', onPointerLeave)
