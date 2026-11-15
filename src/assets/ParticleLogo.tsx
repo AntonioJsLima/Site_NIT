@@ -56,7 +56,7 @@ function createImageTargets(image: HTMLImageElement, width: number, height: numb
 const PHYSICS = {
   sampleDesktop: 1,
   sampleMobile: 3,
-  maxDesktop: 10500,
+  maxDesktop: 8000,
   maxMobile: 10000,
   pointDesktop: 2.35,
   pointMobile: 2.0,
