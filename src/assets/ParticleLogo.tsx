@@ -52,13 +52,67 @@ function createImageTargets(image: HTMLImageElement, width: number, height: numb
   return targets
 }
 
+/** Reproduce OrbitAgro's final-screen ring mask as particle destinations. */
+function createCircularTargets(width: number, height: number, count: number, mobile: boolean) {
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.max(1, Math.floor(width))
+  canvas.height = Math.max(1, Math.floor(height))
+  const context = canvas.getContext('2d', { willReadFrequently: true })
+  const targets = new Float32Array(count * 3)
+  if (!context) return targets
+
+  const cx = canvas.width / 2
+  const cy = canvas.height / 2
+  const baseRadius = Math.min(canvas.width, canvas.height) * 0.4
+  for (let ring = 0; ring < 5; ring++) {
+    context.lineWidth = 1 + Math.random() * 4
+    context.strokeStyle = `rgba(255,255,255,${1 - ring * 0.2})`
+    if (ring % 2 === 0) context.setLineDash([10 + Math.random() * 30, 10 + Math.random() * 20])
+    else context.setLineDash([])
+    context.beginPath()
+    context.arc(cx, cy, baseRadius + ring * 25, 0, Math.PI * 2)
+    context.stroke()
+  }
+
+  context.globalCompositeOperation = 'source-over'
+  const glow = context.createRadialGradient(cx, cy, 0, cx, cy, baseRadius * 1.5)
+  glow.addColorStop(0, 'rgba(255,255,255,0.15)')
+  glow.addColorStop(1, 'rgba(255,255,255,0)')
+  context.fillStyle = glow
+  context.beginPath()
+  context.arc(cx, cy, baseRadius * 1.5, 0, Math.PI * 2)
+  context.fill()
+
+  const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data
+  const candidates: Array<[number, number]> = []
+  const gap = mobile ? 3 : 2
+  for (let y = 0; y < canvas.height; y += gap) {
+    for (let x = 0; x < canvas.width; x += gap) {
+      if (pixels[(y * canvas.width + x) * 4 + 3] > 24) candidates.push([x, y])
+    }
+  }
+
+  for (let i = candidates.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[candidates[i], candidates[j]] = [candidates[j], candidates[i]]
+  }
+  if (!candidates.length) return targets
+
+  for (let i = 0; i < count; i++) {
+    const [x, y] = candidates[i % candidates.length]
+    targets[i * 3] = x - cx
+    targets[i * 3 + 1] = -(y - cy)
+  }
+  return targets
+}
+
 // Particle feel is kept together here so it is straightforward to tune later.
 const PHYSICS = {
   sampleDesktop: 1,
   sampleMobile: 3,
-  maxDesktop: 8000,
+  maxDesktop: 7000,
   maxMobile: 10000,
-  pointDesktop: 2.35,
+  pointDesktop: 3.0,
   pointMobile: 2.0,
   returnIdle: 0.024,
   returnActive: 0.0026,
@@ -84,8 +138,10 @@ const PHYSICS = {
   idleDrift: 1.4,
 }
 
-export function ParticleLogo() {
+export function ParticleLogo({ responsibleMode = false }: { responsibleMode?: boolean }) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const responsibleModeRef = useRef(responsibleMode)
+  responsibleModeRef.current = responsibleMode
 
   useEffect(() => {
     const container = containerRef.current
@@ -269,8 +325,8 @@ export function ParticleLogo() {
         ;(points.userData as { targetMasks?: Float32Array[] }).targetMasks = targetMasks
       }
 
-      // Generate one screen mask per idle period, leaving frames between the
-      // full-resolution image scans.
+      // Generate the image masks in idle time, then prepare the circular page
+      // mask separately so the initial logo render stays responsive.
       runWhenIdle(() => {
         if (disposed) return
         createTarget(0)
@@ -278,8 +334,13 @@ export function ParticleLogo() {
           runWhenIdle(() => {
             if (disposed) return
             createTarget(1)
-            backgroundTargetsReady = true
-            backgroundTargetsScheduled = false
+            runWhenIdle(() => {
+              if (disposed || !points) return
+              targetMasks[3] = createCircularTargets(width, height, current.length / 3, mobile)
+              ;(points.userData as { targetMasks?: Float32Array[] }).targetMasks = targetMasks
+              backgroundTargetsReady = true
+              backgroundTargetsScheduled = false
+            })
           })
         })
       })
@@ -336,11 +397,12 @@ export function ParticleLogo() {
       if (!points || !material || !current.length) return
       const dt = Math.min((now - (lastFrame || now)) / 16.67, 2.5)
       lastFrame = now
-      const transitionStarted = Math.abs(scrollTarget - scrollProgress) > 0.006
-      const progressEase = transitionStarted ? PHYSICS.screenTransitionEase : PHYSICS.scrollEase
-      scrollProgress += (scrollTarget - scrollProgress) * progressEase
-      const transitioning = Math.abs(scrollTarget - scrollProgress) > 0.006
       const masks = (points.userData as { targetMasks?: Float32Array[] }).targetMasks ?? targetMasks
+      const targetProgress = responsibleModeRef.current && masks[3] ? 3 : scrollTarget
+      const transitionStarted = Math.abs(targetProgress - scrollProgress) > 0.006
+      const progressEase = transitionStarted ? PHYSICS.screenTransitionEase : PHYSICS.scrollEase
+      scrollProgress += (targetProgress - scrollProgress) * progressEase
+      const transitioning = Math.abs(targetProgress - scrollProgress) > 0.006
       const fromStage = Math.min(Math.floor(scrollProgress), masks.length - 1)
       const toStage = Math.min(fromStage + 1, masks.length - 1)
       const stageMix = THREE.MathUtils.clamp(scrollProgress - fromStage, 0, 1)
@@ -368,6 +430,18 @@ export function ParticleLogo() {
         vx += (targetX - x) * returnForce * dt
         vy += (targetY - y) * returnForce * dt
         vz += -current[i3 + 2] * returnForce * dt
+
+        // Isolated to the Responsável page: same tangential clockwise impulse
+        // used by the OrbitAgro result stage. The existing screens keep their
+        // original particle physics unchanged.
+        const circularStageStrength = responsibleModeRef.current && masks[3]
+          ? Math.max(0, 1 - Math.abs(scrollProgress - 3))
+          : 0
+        if (circularStageStrength > 0.1) {
+          const angle = Math.atan2(y, x)
+          vx += Math.sin(angle) * 0.002 * width * circularStageStrength * dt
+          vy -= Math.cos(angle) * 0.002 * height * circularStageStrength * dt
+        }
 
         if (activelyMoving && trail.length) {
           const dx = pointer.x - x, dy = pointer.y - y

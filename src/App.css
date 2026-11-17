@@ -17,6 +17,20 @@
   display: none;
 }
 
+/* Responsável is a standalone view, while the shared particle canvas stays mounted. */
+.screen--responsible {
+  overflow: hidden;
+  scroll-snap-type: none;
+}
+
+.screen--responsible > section:not(.hero) {
+  visibility: hidden;
+}
+
+.screen--responsible > .hero > :not(.particle-logo) {
+  visibility: hidden;
+}
+
 .topbar {
   position: fixed;
   z-index: 5;

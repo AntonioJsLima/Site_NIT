@@ -1,12 +1,34 @@
 import './App.css'
 import { ParticleLogo } from './assets/ParticleLogo'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type MouseEvent } from 'react'
 
 function App() {
   const screenRef = useRef<HTMLElement>(null)
   const [activeSection, setActiveSection] = useState('inicio')
+  const [isResponsiblePage, setIsResponsiblePage] = useState(() => window.location.pathname === '/responsavel')
+
+  const navigate = (path: string) => {
+    if (window.location.pathname !== path) window.history.pushState({}, '', path)
+    setIsResponsiblePage(path === '/responsavel')
+  }
+
+  const navigateToSection = (event: MouseEvent<HTMLAnchorElement>, sectionId: string) => {
+    if (!isResponsiblePage) return
+    event.preventDefault()
+    navigate('/')
+    window.requestAnimationFrame(() => {
+      screenRef.current?.querySelector<HTMLElement>(`#${sectionId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
 
   useEffect(() => {
+    const handlePopState = () => setIsResponsiblePage(window.location.pathname === '/responsavel')
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
+
+  useEffect(() => {
+    if (isResponsiblePage) return
     const screen = screenRef.current
     if (!screen) return
 
@@ -21,26 +43,32 @@ function App() {
 
     sections.forEach((section) => observer.observe(section))
     return () => observer.disconnect()
-  }, [])
+  }, [isResponsiblePage])
 
   return (
-    <main className="screen" ref={screenRef}>
+    <main className={`screen${isResponsiblePage ? ' screen--responsible' : ''}`} ref={screenRef}>
       <header className="topbar">
-        <a className="brand" href="#inicio" aria-label="NIT, SESI e SENAI — início">
+        <a className="brand" href="/" aria-label="NIT, SESI e SENAI — início" onClick={(event) => {
+          event.preventDefault()
+          navigate('/')
+        }}>
           <img src="/images/Logo_N_S_S.png" alt="NIT | SESI | SENAI" />
         </a>
 
         <nav className="navigation" aria-label="Navegação principal">
-          <a href="#inicio" aria-current={activeSection === 'inicio' ? 'page' : undefined}>Início</a>
-          <a href="#sobre" aria-current={activeSection === 'sobre' ? 'page' : undefined}>Sobre</a>
-          <a href="#gestao-documentos" aria-current={activeSection === 'gestao-documentos' ? 'page' : undefined}>Gestão de Documentos</a>
+          <a href="#inicio" aria-current={!isResponsiblePage && activeSection === 'inicio' ? 'page' : undefined} onClick={(event) => navigateToSection(event, 'inicio')}>Início</a>
+          <a href="#sobre" aria-current={!isResponsiblePage && activeSection === 'sobre' ? 'page' : undefined} onClick={(event) => navigateToSection(event, 'sobre')}>Sobre</a>
+          <a href="#gestao-documentos" aria-current={!isResponsiblePage && activeSection === 'gestao-documentos' ? 'page' : undefined} onClick={(event) => navigateToSection(event, 'gestao-documentos')}>Gestão de Documentos</a>
         </nav>
 
-        <a className="leader-link" href="#lider">Responsável</a>
+        <a className="leader-link" href="/responsavel" aria-current={isResponsiblePage ? 'page' : undefined} onClick={(event) => {
+          event.preventDefault()
+          navigate('/responsavel')
+        }}>Responsável</a>
       </header>
 
       <section className="hero" id="inicio" aria-label="Apresentação do NIT">
-        <ParticleLogo />
+        <ParticleLogo responsibleMode={isResponsiblePage} />
         <p className="subtitle">Núcleo de Inovação Tecnológica</p>
 
         <div className="scroll-hint" aria-label="Conheça o NIT">
