@@ -110,8 +110,8 @@ function createCircularTargets(width: number, height: number, count: number, mob
 const PHYSICS = {
   sampleDesktop: 1,
   sampleMobile: 3,
-  maxDesktop: 7000,
-  maxMobile: 10000,
+  maxDesktop: 8000,
+  maxMobile: 7000,
   pointDesktop: 3.0,
   pointMobile: 2.0,
   returnIdle: 0.024,
