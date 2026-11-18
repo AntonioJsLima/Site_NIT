@@ -138,10 +138,18 @@ const PHYSICS = {
   idleDrift: 1.4,
 }
 
-export function ParticleLogo({ responsibleMode = false }: { responsibleMode?: boolean }) {
+export function ParticleLogo({
+  responsibleMode = false,
+  policiesMode = false,
+}: {
+  responsibleMode?: boolean
+  policiesMode?: boolean
+}) {
   const containerRef = useRef<HTMLDivElement>(null)
   const responsibleModeRef = useRef(responsibleMode)
   responsibleModeRef.current = responsibleMode
+  const policiesModeRef = useRef(policiesMode)
+  policiesModeRef.current = policiesMode
 
   useEffect(() => {
     const container = containerRef.current
@@ -179,7 +187,11 @@ export function ParticleLogo({ responsibleMode = false }: { responsibleMode?: bo
 
     const logo = new Image()
     logo.src = '/images/Logo_NIT.jpg'
-    const backgroundImages = ['/images/Fundo_Tela01.jpg', '/images/Fundo_Tela02.jpg'].map((src) => {
+    const backgroundImages = [
+      '/images/Fundo_Tela01.jpg',
+      '/images/Fundo_Tela02.jpg',
+      '/images/Fundo_Tela03.jpg',
+    ].map((src) => {
       const image = new Image()
       image.src = src
       return image
@@ -260,7 +272,7 @@ export function ParticleLogo({ responsibleMode = false }: { responsibleMode?: bo
       // generated later during browser idle time so their pixel scans do not
       // block the first frames after opening the site.
       backgroundTargetsReady = false
-      targetMasks = [targets, targets.slice(), targets.slice()]
+      targetMasks = [targets, targets.slice(), targets.slice(), targets.slice(), targets.slice()]
 
       geometry.dispose()
       geometry = new THREE.BufferGeometry()
@@ -334,12 +346,18 @@ export function ParticleLogo({ responsibleMode = false }: { responsibleMode?: bo
           runWhenIdle(() => {
             if (disposed) return
             createTarget(1)
-            runWhenIdle(() => {
-              if (disposed || !points) return
-              targetMasks[3] = createCircularTargets(width, height, current.length / 3, mobile)
-              ;(points.userData as { targetMasks?: Float32Array[] }).targetMasks = targetMasks
-              backgroundTargetsReady = true
-              backgroundTargetsScheduled = false
+            window.requestAnimationFrame(() => {
+              runWhenIdle(() => {
+                if (disposed) return
+                createTarget(2)
+                runWhenIdle(() => {
+                  if (disposed || !points) return
+                  targetMasks[4] = createCircularTargets(width, height, current.length / 3, mobile)
+                  ;(points.userData as { targetMasks?: Float32Array[] }).targetMasks = targetMasks
+                  backgroundTargetsReady = true
+                  backgroundTargetsScheduled = false
+                })
+              })
             })
           })
         })
@@ -388,7 +406,8 @@ export function ParticleLogo({ responsibleMode = false }: { responsibleMode?: bo
     const updateScrollTarget = () => {
       if (!hero) return
       const heroHeight = Math.max(1, hero.offsetHeight)
-      const lastStage = Math.max(0, (scroller?.querySelectorAll('section').length ?? 1) - 1)
+      const snapSections = scroller?.querySelectorAll('section:not(.policies-section)')
+      const lastStage = Math.max(0, (snapSections?.length ?? 1) - 1)
       scrollTarget = THREE.MathUtils.clamp(-hero.getBoundingClientRect().top / heroHeight, 0, lastStage)
     }
 
@@ -398,7 +417,13 @@ export function ParticleLogo({ responsibleMode = false }: { responsibleMode?: bo
       const dt = Math.min((now - (lastFrame || now)) / 16.67, 2.5)
       lastFrame = now
       const masks = (points.userData as { targetMasks?: Float32Array[] }).targetMasks ?? targetMasks
-      const targetProgress = responsibleModeRef.current && masks[3] ? 3 : scrollTarget
+      const policiesStage = 3
+      const responsibleStage = 4
+      const targetProgress = responsibleModeRef.current && masks[responsibleStage]
+        ? responsibleStage
+        : policiesModeRef.current && masks[policiesStage]
+          ? policiesStage
+          : scrollTarget
       const transitionStarted = Math.abs(targetProgress - scrollProgress) > 0.006
       const progressEase = transitionStarted ? PHYSICS.screenTransitionEase : PHYSICS.scrollEase
       scrollProgress += (targetProgress - scrollProgress) * progressEase
@@ -434,8 +459,8 @@ export function ParticleLogo({ responsibleMode = false }: { responsibleMode?: bo
         // Isolated to the Responsável page: same tangential clockwise impulse
         // used by the OrbitAgro result stage. The existing screens keep their
         // original particle physics unchanged.
-        const circularStageStrength = responsibleModeRef.current && masks[3]
-          ? Math.max(0, 1 - Math.abs(scrollProgress - 3))
+        const circularStageStrength = responsibleModeRef.current && masks[responsibleStage]
+          ? Math.max(0, 1 - Math.abs(scrollProgress - responsibleStage))
           : 0
         if (circularStageStrength > 0.1) {
           const angle = Math.atan2(y, x)
@@ -554,10 +579,11 @@ export function ParticleLogo({ responsibleMode = false }: { responsibleMode?: bo
       buildParticles()
       scheduleBackgroundTargets()
     }
+    const backgroundFileNames = ['/images/Fundo_Tela01.jpg', '/images/Fundo_Tela02.jpg', '/images/Fundo_Tela03.jpg']
     backgroundImages.forEach((image, index) => {
       image.onload = scheduleBackgroundTargets
       image.onerror = () => {
-        console.error(`Não consegui carregar ${index === 0 ? '/images/Fundo_Tela01.jpg' : '/images/Fundo_Tela02.jpg'}`)
+        console.error(`Não consegui carregar ${backgroundFileNames[index] ?? image.src}`)
         scheduleBackgroundTargets()
       }
     })

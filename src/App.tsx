@@ -6,33 +6,41 @@ function App() {
   const screenRef = useRef<HTMLElement>(null)
   const [activeSection, setActiveSection] = useState('inicio')
   const [isResponsiblePage, setIsResponsiblePage] = useState(() => window.location.pathname === '/responsavel')
+  const [isPoliciesPage, setIsPoliciesPage] = useState(() => window.location.pathname === '/politicas')
 
   const navigate = (path: string) => {
     if (window.location.pathname !== path) window.history.pushState({}, '', path)
     setIsResponsiblePage(path === '/responsavel')
+    setIsPoliciesPage(path === '/politicas')
   }
 
-  const navigateToSection = (event: MouseEvent<HTMLAnchorElement>, sectionId: string) => {
-    if (!isResponsiblePage) return
-    event.preventDefault()
-    navigate('/')
-    window.requestAnimationFrame(() => {
+  const navigateToSection = (event: MouseEvent<HTMLAnchorElement | HTMLButtonElement> | null, sectionId: string) => {
+    if (event) event.preventDefault()
+    if (isResponsiblePage || isPoliciesPage) {
+      navigate('/')
+      window.requestAnimationFrame(() => {
+        screenRef.current?.querySelector<HTMLElement>(`#${sectionId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
+    } else {
       screenRef.current?.querySelector<HTMLElement>(`#${sectionId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    })
+    }
   }
 
   useEffect(() => {
-    const handlePopState = () => setIsResponsiblePage(window.location.pathname === '/responsavel')
+    const handlePopState = () => {
+      setIsResponsiblePage(window.location.pathname === '/responsavel')
+      setIsPoliciesPage(window.location.pathname === '/politicas')
+    }
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)
   }, [])
 
   useEffect(() => {
-    if (isResponsiblePage) return
+    if (isResponsiblePage || isPoliciesPage) return
     const screen = screenRef.current
     if (!screen) return
 
-    const sections = screen.querySelectorAll<HTMLElement>('section[id]')
+    const sections = screen.querySelectorAll<HTMLElement>('section[id]:not(.policies-section)')
     const observer = new IntersectionObserver((entries) => {
       const mostVisible = entries
         .filter((entry) => entry.isIntersecting)
@@ -43,10 +51,10 @@ function App() {
 
     sections.forEach((section) => observer.observe(section))
     return () => observer.disconnect()
-  }, [isResponsiblePage])
+  }, [isResponsiblePage, isPoliciesPage])
 
   return (
-    <main className={`screen${isResponsiblePage ? ' screen--responsible' : ''}`} ref={screenRef}>
+    <main className={`screen${isResponsiblePage ? ' screen--responsible' : ''}${isPoliciesPage ? ' screen--policies' : ''}`} ref={screenRef}>
       <header className="topbar">
         <a className="brand" href="/" aria-label="NIT, SESI e SENAI — início" onClick={(event) => {
           event.preventDefault()
@@ -56,9 +64,9 @@ function App() {
         </a>
 
         <nav className="navigation" aria-label="Navegação principal">
-          <a href="#inicio" aria-current={!isResponsiblePage && activeSection === 'inicio' ? 'page' : undefined} onClick={(event) => navigateToSection(event, 'inicio')}>Início</a>
-          <a href="#sobre" aria-current={!isResponsiblePage && activeSection === 'sobre' ? 'page' : undefined} onClick={(event) => navigateToSection(event, 'sobre')}>Sobre</a>
-          <a href="#gestao-documentos" aria-current={!isResponsiblePage && activeSection === 'gestao-documentos' ? 'page' : undefined} onClick={(event) => navigateToSection(event, 'gestao-documentos')}>Gestão de Documentos</a>
+          <a href="#inicio" aria-current={!isResponsiblePage && !isPoliciesPage && activeSection === 'inicio' ? 'page' : undefined} onClick={(event) => navigateToSection(event, 'inicio')}>Início</a>
+          <a href="#sobre" aria-current={!isResponsiblePage && !isPoliciesPage && activeSection === 'sobre' ? 'page' : undefined} onClick={(event) => navigateToSection(event, 'sobre')}>Sobre</a>
+          <a href="#gestao-documentos" aria-current={!isResponsiblePage && !isPoliciesPage && activeSection === 'gestao-documentos' ? 'page' : undefined} onClick={(event) => navigateToSection(event, 'gestao-documentos')}>Gestão de Documentos</a>
         </nav>
 
         <a className="leader-link" href="/responsavel" aria-current={isResponsiblePage ? 'page' : undefined} onClick={(event) => {
@@ -68,7 +76,7 @@ function App() {
       </header>
 
       <section className="hero" id="inicio" aria-label="Apresentação do NIT">
-        <ParticleLogo responsibleMode={isResponsiblePage} />
+        <ParticleLogo responsibleMode={isResponsiblePage} policiesMode={isPoliciesPage} />
         <p className="subtitle">Núcleo de Inovação Tecnológica</p>
 
         <div className="scroll-hint" aria-label="Conheça o NIT">
@@ -133,7 +141,16 @@ function App() {
               <span className="document-category">DIRETRIZES INSTITUCIONAIS</span>
               <h2>Políticas do NIT</h2>
               <p>Diretrizes, princípios e orientações institucionais do NIT.</p>
-              <button className="document-card-action" type="button" aria-label="Políticas do NIT: destino ainda não definido">→</button>
+              <button
+                className="document-card-action"
+                type="button"
+                aria-label="Acessar Políticas Institucionais de Inovação e PI"
+                onClick={() => {
+                  navigate('/politicas')
+                }}
+              >
+                →
+              </button>
             </article>
             <article className="document-card">
               <span className="document-category">PROPRIEDADE INTELECTUAL</span>
@@ -146,6 +163,60 @@ function App() {
               <h2>Modelos de Instrumentos jurídicos</h2>
               <p>Instrumentos jurídicos de CT&amp;I baseados nas referências da AGU e adaptados para o SESI/SENAI.</p>
               <button className="document-card-action" type="button" aria-label="Modelos de Instrumentos jurídicos: destino ainda não definido">→</button>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section className="policies-section" id="politicas" aria-label="Políticas Institucionais de Inovação e PI">
+        <div className="policies-content">
+          <header className="policies-heading">
+            <span className="policies-badge">DIRETRIZES E MARCOS REGULATÓRIOS</span>
+            <h1>
+              Políticas Institucionais de Inovação e PI <span className="policies-title-icons" aria-hidden="true">📜⚖️</span>
+            </h1>
+            <p className="policies-subtitle">
+              Acesse as diretrizes normativas e marcos regulatórios para a gestão da inovação,
+              governança e salvaguarda da propriedade intelectual no âmbito do SESI e SENAI Goiás.
+            </p>
+            <h2 className="policies-subheading">ECT&amp;I Normas - Políticas do NIT e Diretrizes Vigentes</h2>
+          </header>
+
+          <div className="policy-cards">
+            <article className="policy-card">
+              <h3>Política 1 - Regulamento Operacional do NIT</h3>
+              <p>
+                Estabelece a governança e fluxos institucionais do Núcleo de Inovação Tecnológica.
+                Regula a integração com a ASJUR, os procedimentos de avaliação de patentes, buscas
+                de anterioridade e cláusulas contratuais de PD&amp;I.
+              </p>
+              <button className="policy-card-action" type="button" aria-label="Acessar Política 1 - Regulamento Operacional do NIT">
+                <span aria-hidden="true">→</span>
+              </button>
+            </article>
+
+            <article className="policy-card">
+              <h3>Política 2 - Propriedade Intelectual</h3>
+              <p>
+                Regulamenta os critérios de titularidade e cotitularidade institucional sobre
+                criações. Abrange proteção de marcas, patentes, softwares e direitos autorais, além
+                de prever deveres de sigilo e transferência tecnológica.
+              </p>
+              <button className="policy-card-action" type="button" aria-label="Acessar Política 2 - Propriedade Intelectual">
+                <span aria-hidden="true">→</span>
+              </button>
+            </article>
+
+            <article className="policy-card">
+              <h3>Política 3 - Política de Inovação</h3>
+              <p>
+                Define as diretrizes e mecanismos institucionais para fomento à inovação e
+                empreendedorismo. Disciplina a integração tecnológica na educação, o
+                compartilhamento de laboratórios e o incentivo via bolsas e editais.
+              </p>
+              <button className="policy-card-action" type="button" aria-label="Acessar Política 3 - Política de Inovação">
+                <span aria-hidden="true">→</span>
+              </button>
             </article>
           </div>
         </div>
