@@ -141,15 +141,19 @@ const PHYSICS = {
 export function ParticleLogo({
   responsibleMode = false,
   policiesMode = false,
+  proceduresMode = false,
 }: {
   responsibleMode?: boolean
   policiesMode?: boolean
+  proceduresMode?: boolean
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const responsibleModeRef = useRef(responsibleMode)
   responsibleModeRef.current = responsibleMode
   const policiesModeRef = useRef(policiesMode)
   policiesModeRef.current = policiesMode
+  const proceduresModeRef = useRef(proceduresMode)
+  proceduresModeRef.current = proceduresMode
 
   useEffect(() => {
     const container = containerRef.current
@@ -191,6 +195,7 @@ export function ParticleLogo({
       '/images/Fundo_Tela01.jpg',
       '/images/Fundo_Tela02.jpg',
       '/images/Fundo_Tela03.jpg',
+      '/images/Fundo_Tela04.jpg',
     ].map((src) => {
       const image = new Image()
       image.src = src
@@ -272,7 +277,7 @@ export function ParticleLogo({
       // generated later during browser idle time so their pixel scans do not
       // block the first frames after opening the site.
       backgroundTargetsReady = false
-      targetMasks = [targets, targets.slice(), targets.slice(), targets.slice(), targets.slice()]
+      targetMasks = Array.from({ length: backgroundImages.length + 2 }, (_, index) => index === 0 ? targets : targets.slice())
 
       geometry.dispose()
       geometry = new THREE.BufferGeometry()
@@ -337,31 +342,22 @@ export function ParticleLogo({
         ;(points.userData as { targetMasks?: Float32Array[] }).targetMasks = targetMasks
       }
 
-      // Generate the image masks in idle time, then prepare the circular page
-      // mask separately so the initial logo render stays responsive.
-      runWhenIdle(() => {
-        if (disposed) return
-        createTarget(0)
-        window.requestAnimationFrame(() => {
-          runWhenIdle(() => {
-            if (disposed) return
-            createTarget(1)
-            window.requestAnimationFrame(() => {
-              runWhenIdle(() => {
-                if (disposed) return
-                createTarget(2)
-                runWhenIdle(() => {
-                  if (disposed || !points) return
-                  targetMasks[4] = createCircularTargets(width, height, current.length / 3, mobile)
-                  ;(points.userData as { targetMasks?: Float32Array[] }).targetMasks = targetMasks
-                  backgroundTargetsReady = true
-                  backgroundTargetsScheduled = false
-                })
-              })
-            })
-          })
-        })
-      })
+      // Build each background mask during idle time, then prepare the separate
+      // circular target. This keeps the initial logo animation responsive.
+      const createNextTarget = (index: number) => {
+        if (disposed || !points) return
+        if (index < backgroundImages.length) {
+          createTarget(index)
+          window.requestAnimationFrame(() => runWhenIdle(() => createNextTarget(index + 1)))
+          return
+        }
+
+        targetMasks[backgroundImages.length + 1] = createCircularTargets(width, height, current.length / 3, mobile)
+        ;(points.userData as { targetMasks?: Float32Array[] }).targetMasks = targetMasks
+        backgroundTargetsReady = true
+        backgroundTargetsScheduled = false
+      }
+      runWhenIdle(() => createNextTarget(0))
     }
 
     const resize = () => {
@@ -406,7 +402,7 @@ export function ParticleLogo({
     const updateScrollTarget = () => {
       if (!hero) return
       const heroHeight = Math.max(1, hero.offsetHeight)
-      const snapSections = scroller?.querySelectorAll('section:not(.policies-section)')
+      const snapSections = scroller?.querySelectorAll('.hero, .about-section, .documents-section')
       const lastStage = Math.max(0, (snapSections?.length ?? 1) - 1)
       scrollTarget = THREE.MathUtils.clamp(-hero.getBoundingClientRect().top / heroHeight, 0, lastStage)
     }
@@ -418,12 +414,15 @@ export function ParticleLogo({
       lastFrame = now
       const masks = (points.userData as { targetMasks?: Float32Array[] }).targetMasks ?? targetMasks
       const policiesStage = 3
-      const responsibleStage = 4
+      const proceduresStage = 4
+      const responsibleStage = 5
       const targetProgress = responsibleModeRef.current && masks[responsibleStage]
         ? responsibleStage
-        : policiesModeRef.current && masks[policiesStage]
-          ? policiesStage
-          : scrollTarget
+        : proceduresModeRef.current && masks[proceduresStage]
+          ? proceduresStage
+          : policiesModeRef.current && masks[policiesStage]
+            ? policiesStage
+            : scrollTarget
       const transitionStarted = Math.abs(targetProgress - scrollProgress) > 0.006
       const progressEase = transitionStarted ? PHYSICS.screenTransitionEase : PHYSICS.scrollEase
       scrollProgress += (targetProgress - scrollProgress) * progressEase
@@ -579,7 +578,7 @@ export function ParticleLogo({
       buildParticles()
       scheduleBackgroundTargets()
     }
-    const backgroundFileNames = ['/images/Fundo_Tela01.jpg', '/images/Fundo_Tela02.jpg', '/images/Fundo_Tela03.jpg']
+    const backgroundFileNames = ['/images/Fundo_Tela01.jpg', '/images/Fundo_Tela02.jpg', '/images/Fundo_Tela03.jpg', '/images/Fundo_Tela04.jpg']
     backgroundImages.forEach((image, index) => {
       image.onload = scheduleBackgroundTargets
       image.onerror = () => {

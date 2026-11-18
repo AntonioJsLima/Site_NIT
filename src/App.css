@@ -23,7 +23,7 @@
   scroll-snap-type: none;
 }
 
-.screen--responsible > section:not(.hero) {
+.screen--responsible > section:not(.hero, .responsible-section) {
   visibility: hidden;
 }
 
@@ -31,9 +31,44 @@
   visibility: hidden;
 }
 
+.screen--responsible > .hero,
+.screen--policies > .hero {
+  height: 0;
+  min-height: 0;
+  overflow: visible;
+  scroll-snap-align: none;
+}
+
+.screen--procedures {
+  overflow: hidden;
+  scroll-snap-type: none;
+}
+
+.screen--procedures > .hero {
+  height: 0;
+  min-height: 0;
+  overflow: visible;
+  scroll-snap-align: none;
+}
+
+.screen--procedures > .hero > :not(.particle-logo) {
+  display: none;
+}
+
+.screen--procedures > .about-section,
+.screen--procedures > .documents-section,
+.screen--procedures > .responsible-section,
+.screen--procedures > .policies-section {
+  display: none;
+}
+
+.screen:not(.screen--responsible) > .responsible-section {
+  display: none;
+}
+
 /* Políticas is a standalone view accessed only from Gestão de Documentos. */
 .screen--policies {
-  overflow-y: auto;
+  overflow: hidden;
   scroll-snap-type: none;
 }
 
@@ -47,6 +82,10 @@
 }
 
 .screen:not(.screen--policies) > .policies-section {
+  display: none;
+}
+
+.screen:not(.screen--procedures) > .procedures-section {
   display: none;
 }
 
@@ -133,6 +172,12 @@
 
 .leader-link:hover,
 .leader-link:focus-visible {
+  border-color: #73b8ff;
+  background: rgba(65, 147, 230, 0.1);
+  color: #b5d8ff;
+}
+
+.leader-link[aria-current='page'] {
   border-color: #73b8ff;
   background: rgba(65, 147, 230, 0.1);
   color: #b5d8ff;
@@ -334,6 +379,188 @@
   scroll-snap-stop: always;
 }
 
+.responsible-section {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  width: 100%;
+  height: 100vh;
+  height: 100svh;
+  min-height: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(12px, 2vh, 22px);
+  padding: 82px clamp(22px, 5vw, 76px) clamp(100px, 14vh, 150px);
+}
+
+.responsible-heading {
+  text-align: center;
+}
+
+.responsible-eyebrow {
+  display: inline-block;
+  margin-bottom: 8px;
+  color: #69c9df;
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.16em;
+}
+
+.responsible-heading h1 {
+  margin: 0;
+  color: #f4f7fb;
+  font-size: clamp(26px, 2.7vw, 38px);
+  font-weight: 750;
+  line-height: 1.12;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.42);
+}
+
+.responsible-card {
+  display: grid;
+  grid-template-columns: minmax(230px, 0.7fr) minmax(0, 1.45fr);
+  gap: clamp(20px, 2.5vw, 38px);
+  width: min(100%, 1120px);
+  padding: clamp(20px, 2.3vw, 32px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  background-color: rgba(45, 48, 54, 0.32);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.2);
+}
+
+.responsible-photo-frame {
+  position: relative;
+  height: clamp(280px, 43vh, 370px);
+  min-height: 0;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid rgba(65, 147, 166, 0.5);
+  border-radius: 20px;
+  background: rgba(7, 19, 36, 0.72);
+}
+
+.responsible-photo-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 28%;
+}
+
+.responsible-details {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.responsible-role {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 7px 13px;
+  border: 1px solid rgba(65, 147, 166, 0.5);
+  border-radius: 999px;
+  background: rgba(65, 147, 166, 0.14);
+  color: #85d9ef;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.responsible-details h2 {
+  margin: 0 0 12px;
+  color: #f5f7fa;
+  font-size: clamp(25px, 2.5vw, 36px);
+  line-height: 1.12;
+}
+
+.responsible-details p {
+  margin: 0 0 11px;
+  color: #c8d1dd;
+  font-size: clamp(13px, 1vw, 15px);
+  line-height: 1.48;
+}
+
+.responsible-details p strong {
+  color: #eef4fa;
+  font-weight: 700;
+}
+
+.responsible-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 2px 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.responsible-tags li {
+  padding: 8px 13px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.055);
+  color: #d0d9e3;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.responsible-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.responsible-action {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 0 20px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  color: #f4f8fb;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: transform 180ms ease, background-color 180ms ease, border-color 180ms ease;
+}
+
+.responsible-action svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.responsible-action--linkedin {
+  border-color: rgba(105, 201, 223, 0.7);
+  background: rgba(65, 147, 166, 0.78);
+  box-shadow: 0 7px 22px rgba(36, 138, 164, 0.2);
+}
+
+.responsible-action--linkedin:hover,
+.responsible-action--linkedin:focus-visible {
+  transform: translateY(-2px);
+  background: rgba(65, 163, 184, 0.96);
+}
+
+.responsible-action--contact {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.responsible-action--contact:disabled {
+  color: #d6dde5;
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
 .documents-content {
   width: min(100%, 1260px);
   margin: 0 auto;
@@ -435,7 +662,8 @@
   background: rgba(65, 147, 166, 0.22);
 }
 
-.policies-section {
+.policies-section,
+.procedures-section {
   position: relative;
   z-index: 1;
   display: flex;
@@ -450,7 +678,8 @@
   scroll-snap-stop: always;
 }
 
-.policies-content {
+.policies-content,
+.procedures-content {
   width: min(100%, 1260px);
   margin: 0 auto;
   display: flex;
@@ -458,7 +687,8 @@
   align-items: center;
 }
 
-.policies-heading {
+.policies-heading,
+.procedures-heading {
   margin: 0 auto 28px;
   text-align: center;
   display: flex;
@@ -492,7 +722,8 @@
   transform: translateX(-2px);
 }
 
-.policies-badge {
+.policies-badge,
+.procedures-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -511,7 +742,8 @@
   box-shadow: 0 0 16px rgba(71, 168, 244, 0.12);
 }
 
-.policies-heading h1 {
+.policies-heading h1,
+.procedures-heading h1 {
   margin: 0 0 12px;
   color: #f4f7fb;
   font-size: clamp(26px, 3.1vw, 40px);
@@ -526,7 +758,8 @@
   vertical-align: middle;
 }
 
-.policies-subtitle {
+.policies-subtitle,
+.procedures-heading > p {
   max-width: 780px;
   margin: 0 auto 16px;
   color: #b7c3ce;
@@ -534,7 +767,8 @@
   line-height: 1.55;
 }
 
-.policies-subheading {
+.policies-subheading,
+.procedures-heading > h2 {
   margin: 6px 0 0;
   color: #e1ebf5;
   font-size: clamp(14px, 1.3vw, 17px);
@@ -542,14 +776,16 @@
   letter-spacing: 0.015em;
 }
 
-.policy-cards {
+.policy-cards,
+.procedures-cards {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 20px;
   width: 100%;
 }
 
-.policy-card {
+.policy-card,
+.procedure-card {
   position: relative;
   z-index: 2;
   display: flex;
@@ -565,14 +801,16 @@
   transition: border-color 180ms ease, background-color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
 }
 
-.policy-card:hover {
+.policy-card:hover,
+.procedure-card:hover {
   transform: translateY(-3px);
   border-color: rgba(65, 147, 166, 0.42);
   background-color: rgba(255, 255, 255, 0.085);
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28), 0 0 20px rgba(71, 168, 244, 0.12);
 }
 
-.policy-card h3 {
+.policy-card h3,
+.procedure-card h3 {
   margin: 0 0 12px;
   color: #f1f5f9;
   font-size: clamp(18px, 1.55vw, 22px);
@@ -580,7 +818,8 @@
   line-height: 1.25;
 }
 
-.policy-card p {
+.policy-card p,
+.procedure-card p {
   margin: 0 0 22px;
   color: #c4ced9;
   font-size: 14px;
@@ -612,6 +851,10 @@
   color: #ffffff;
   transform: translateY(-2px);
   box-shadow: 0 0 14px rgba(71, 168, 244, 0.35);
+}
+
+.policy-card-action:disabled {
+  cursor: default;
 }
 
 .particle-logo {
@@ -756,6 +999,81 @@
     padding: 110px 20px 34px;
   }
 
+  .responsible-section {
+    gap: 10px;
+    padding: 105px 12px 12px;
+  }
+
+  .responsible-eyebrow {
+    margin-bottom: 9px;
+    font-size: 11px;
+  }
+
+  .responsible-heading h1 {
+    font-size: clamp(25px, 7vw, 34px);
+  }
+
+  .responsible-card {
+    grid-template-columns: minmax(76px, 0.32fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    max-height: calc(100svh - 164px);
+    padding: 12px;
+    overflow: hidden;
+    border-radius: 16px;
+  }
+
+  .responsible-photo-frame,
+  .responsible-photo-frame img {
+    height: clamp(110px, 25vh, 190px);
+    min-height: 0;
+  }
+
+  .responsible-photo-frame {
+    border-radius: 12px;
+  }
+
+  .responsible-role {
+    gap: 5px;
+    margin-bottom: 7px;
+    padding: 5px 8px;
+    font-size: clamp(9px, 2.5vw, 11px);
+  }
+
+  .responsible-details h2 {
+    margin-bottom: 7px;
+    font-size: clamp(17px, 4.8vw, 24px);
+  }
+
+  .responsible-details p {
+    margin-bottom: 7px;
+    font-size: clamp(9px, 2.5vw, 12px);
+    line-height: 1.32;
+  }
+
+  .responsible-tags {
+    gap: 5px;
+    margin: 0 0 8px;
+  }
+
+  .responsible-tags li {
+    padding: 4px 6px;
+    font-size: 9px;
+  }
+
+  .responsible-action {
+    min-height: 34px;
+    gap: 6px;
+    padding: 0 11px;
+    font-size: 11px;
+  }
+
+  .responsible-action svg {
+    width: 15px;
+    height: 15px;
+  }
+
   .documents-heading {
     margin-bottom: 22px;
   }
@@ -774,35 +1092,42 @@
     margin-bottom: 16px;
   }
 
-  .policies-section {
+  .policies-section,
+  .procedures-section {
     height: auto;
     min-height: 100svh;
     padding: 110px 20px 34px;
   }
 
-  .policies-heading {
+  .policies-heading,
+  .procedures-heading {
     margin-bottom: 22px;
   }
 
-  .policies-heading h1 {
+  .policies-heading h1,
+  .procedures-heading h1 {
     font-size: clamp(22px, 5.8vw, 28px);
   }
 
-  .policies-subheading {
+  .policies-subheading,
+  .procedures-heading > h2 {
     font-size: 14px;
   }
 
-  .policy-cards {
+  .policy-cards,
+  .procedures-cards {
     grid-template-columns: 1fr;
     gap: 12px;
   }
 
-  .policy-card {
+  .policy-card,
+  .procedure-card {
     min-height: auto;
     padding: 22px;
   }
 
-  .policy-card p {
+  .policy-card p,
+  .procedure-card p {
     margin-bottom: 18px;
   }
 
