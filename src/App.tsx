@@ -1,6 +1,114 @@
 import './App.css'
 import { ParticleLogo } from './assets/ParticleLogo'
-import { useEffect, useRef, useState, type MouseEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from 'react'
+
+type LegalModelCategory = 'models' | 'legal'
+type LegalModel = {
+  id: string
+  title: string
+  description: string
+  category: LegalModelCategory
+  documentCount?: number
+}
+
+const LEGAL_MODELS: LegalModel[] = [
+  {
+    id: 'modelo-1', category: 'models', title: 'Modelo 1 - Parecer Técnico',
+    description: 'Comprova tecnicamente que a atividade proposta se enquadra como pesquisa básica, pesquisa aplicada ou desenvolvimento experimental, justificando o risco tecnológico e seu enquadramento no Marco Legal de CT&I. Deve ser elaborado pelo Pesquisador Responsável ou Coordenador do Projeto na fase inicial de concepção, antes da submissão de qualquer minuta contratual ao NIT.',
+  },
+  {
+    id: 'modelo-2', category: 'models', title: 'Modelo 2 - Parecer Técnico',
+    description: 'Valida o alinhamento da parceria com a Política de Inovação da ICT, define a titularidade da propriedade intelectual envolvida e avalia a precificação de contrapartidas e royalties. Elaborado pelo Analista do NIT e aprovado pelo Coordenador ou Gestor do NIT. Deve ser emitido após o Parecer Técnico e o Plano de Trabalho, antes do encaminhamento para análise jurídica.',
+  },
+  {
+    id: 'modelo-3', category: 'models', title: 'Modelo 3 - Plano de trabalho de acordo de parceria',
+    description: 'Define o objeto, as metas, o cronograma, os recursos envolvidos e os entregáveis do projeto, estabelecendo as obrigações técnicas das partes. Elaborado conjuntamente pela ICT e pela empresa parceira, deve ser desenvolvido em paralelo à minuta jurídica e integrar o Anexo I do Acordo de Parceria em PD&I.',
+  },
+  {
+    id: 'modelo-4', category: 'models', title: 'Modelo 4 - Plano de trabalho para prestação de serviços especializados',
+    description: 'Define as condições para a prestação de serviços tecnológicos e ensaios laboratoriais de rotina, sem compartilhamento de risco tecnológico e com preço previamente estabelecido. Elaborado pelo responsável pelo serviço e aprovado pela área competente. Deve ser utilizado em contratações de serviços técnicos ou laboratoriais solicitados por terceiros.',
+  },
+  {
+    id: 'modelo-5', category: 'models', title: 'Modelo 5 - Plano de trabalho de contratos que envolvem transferência de tecnologia',
+    description: 'Define as ações de absorção tecnológica, transferência de know-how, capacitação e exploração da tecnologia, estabelecendo as condições para sua utilização e comercialização. Elaborado pelo NIT em conjunto com a empresa parceira, deve ser utilizado em processos de licenciamento, cessão de direitos de propriedade intelectual ou transferência de tecnologia.',
+  },
+  {
+    id: 'modelos-6-8', category: 'models', documentCount: 3, title: 'Modelos 6, 7 e 8 - Formaturas de Aprovação de Projetos de PD&I',
+    description: 'Formaliza a aprovação institucional de projetos de PD&I após a conclusão da instrução técnica e jurídica. A aprovação pode ocorrer por decisão da autoridade competente, de forma referendada por instância colegiada ou diretamente por órgão colegiado, conforme a governança do SENAI. Elaborado pela área responsável pela tramitação do processo e aprovado pelas instâncias competentes. Deve ser emitido na etapa final da instrução processual, antes da assinatura do instrumento jurídico pelas partes.',
+  },
+  {
+    id: 'modelo-9', category: 'models', title: 'Modelo 9 - Declaração de Ausência de Conflito de Interesses',
+    description: 'Declara a inexistência de conflitos de interesse que possam comprometer a execução ou a imparcialidade do projeto. Deve ser assinada por todos os participantes da equipe antes do início das atividades e sempre que houver inclusão de novos integrantes.',
+  },
+  {
+    id: 'modelo-10', category: 'models', title: 'Modelo 10 - Declaração de limitação de remuneração ao teto constitucional',
+    description: 'Declara que a remuneração recebida no âmbito do projeto, somada à remuneração funcional do servidor ou pesquisador, não ultrapassa o teto constitucional aplicável. Deve ser preenchida e assinada pelo beneficiário antes da concessão ou do pagamento de bolsas e demais incentivos vinculados ao projeto.',
+  },
+  {
+    id: 'modelo-11', category: 'models', title: 'Modelo 11 - Justificativa para a escolha de uma das fundações de apoio',
+    description: 'Justifica a escolha da fundação de apoio responsável pela gestão administrativa e financeira do projeto. Elaborada pelo Coordenador do Projeto e aprovada pela direção competente. Deve ser emitida quando houver participação de fundação de apoio na execução do projeto.',
+  },
+  {
+    id: 'modelo-12', category: 'models', title: 'Modelo 12 - Lista de verificação para a instrução processual de termos aditivos',
+    description: 'Verifica a conformidade das solicitações de alteração contratual, incluindo prorrogação de prazo, revisão de valores, ajuste de metas e substituição de equipe técnica. Elaborado pelo Gestor do Contrato e pelo NIT, com aprovação da coordenação responsável. Deve ser utilizado sempre que houver necessidade de modificar o instrumento original, preferencialmente antes do término de sua vigência.',
+  },
+  {
+    id: 'modelo-13', category: 'models', title: 'Modelo 13 - Manifestação do Núcleo de Inovação Tecnológica (NIT) para termos aditivos',
+    description: 'Avalia os impactos das alterações contratuais sobre a propriedade intelectual, os prazos de execução e o equilíbrio econômico-financeiro do projeto. Elaborada pelo NIT e aprovada pela coordenação responsável. Deve ser emitida sempre que houver necessidade de aditamento do instrumento, antes da formalização das alterações.',
+  },
+  {
+    id: 'modelo-14', category: 'models', title: 'Modelo 14 - Manifestação acerca da proposta de despesas operacionais e administrativas da fundação de apoio',
+    description: 'Analisa e valida os custos operacionais e administrativos aplicáveis ao projeto, assegurando sua adequação às normas institucionais e às condições da parceria. Elaborada pela área financeira e/ou NIT, deve ser emitida quando houver participação de fundação de apoio na gestão administrativa e financeira do projeto.',
+  },
+  {
+    id: 'convenio-aporte-ict', category: 'legal', title: 'Convênio com Aporte de Recurso diretamente pela ICT',
+    description: 'Formaliza o repasse de recursos públicos para a execução de projetos de pesquisa, desenvolvimento e inovação (PD&I), estabelecendo as responsabilidades das partes, a aplicação dos recursos, o plano de trabalho, a prestação de contas e as regras de propriedade intelectual. Destina-se às ICTs que recebem recursos diretamente de órgãos ou entidades públicas, sem a interveniência de fundação de apoio. Deve ser utilizado antes do início da execução do projeto, acompanhado do respectivo Plano de Trabalho.',
+  },
+  {
+    id: 'termo-outorga', category: 'legal', title: 'Termo de Outorga',
+    description: 'Formaliza a concessão de bolsas, auxílios financeiros ou bônus tecnológico para execução de atividades de pesquisa, desenvolvimento e inovação (PD&I), estabelecendo direitos, obrigações, critérios de utilização dos recursos e prestação de contas. Destina-se às instituições de fomento, ICTs, pesquisadores, bolsistas e empresas beneficiárias. Deve ser utilizado quando houver apoio financeiro vinculado a projetos de pesquisa, capacitação, desenvolvimento tecnológico ou inovação, conforme regulamentação da instituição concedente.',
+  },
+  {
+    id: 'acordo-cooperacao-internacional', category: 'legal', title: 'Acordo de Cooperação Internacional',
+    description: 'Formaliza parcerias internacionais voltadas ao desenvolvimento de atividades de ciência, tecnologia e inovação (CT&I), estabelecendo regras de cooperação, execução de projetos, intercâmbio de conhecimento, compartilhamento de recursos, confidencialidade e propriedade intelectual. Destina-se a ICTs e instituições estrangeiras que desejam atuar conjuntamente em ações de pesquisa, desenvolvimento tecnológico e inovação. Deve ser utilizado antes do início da cooperação internacional, acompanhado de Plano de Trabalho contendo objetivos, responsabilidades, recursos e metas pactuadas entre os participantes.',
+  },
+  {
+    id: 'acordo-parceria-aporte', category: 'legal', title: 'Acordo de Parceria com Aporte de Recurso',
+    description: 'Formaliza a cooperação entre uma ICT e uma empresa ou instituição parceira para execução conjunta de projetos de pesquisa, desenvolvimento e inovação (PD&I), com aporte de recursos financeiros pelo parceiro. Define as responsabilidades das partes, a aplicação dos recursos, o plano de trabalho, a execução do projeto, as regras de confidencialidade e a gestão da propriedade intelectual dos resultados. Destina-se a projetos de PD&I desenvolvidos em parceria entre ICTs e entidades externas, com ou sem interveniência de fundação de apoio na gestão dos recursos. Deve ser utilizado antes do início da execução do projeto e acompanhado do respectivo Plano de Trabalho.',
+  },
+  {
+    id: 'acordo-parceria-sem-aporte', category: 'legal', title: 'Acordo de Parceria sem Aporte de Recurso',
+    description: 'Formaliza a cooperação entre ICTs, empresas ou outras instituições para a execução conjunta de projetos de pesquisa, desenvolvimento e inovação (PD&I), sem transferência de recursos financeiros entre os parceiros. Define as responsabilidades das partes, a execução das atividades, o compartilhamento de infraestrutura, as regras de confidencialidade e a gestão da propriedade intelectual dos resultados. Também pode ser utilizado para a estruturação de ambientes promotores de inovação, como parques tecnológicos, hubs e espaços de coworking. Deve ser utilizado antes do início das atividades previstas, acompanhado do respectivo Plano de Trabalho.',
+  },
+  {
+    id: 'contrato-aquisicao-produto', category: 'legal', title: 'Contrato de Aquisição de Produto',
+    description: 'Formaliza a aquisição de bens, insumos, serviços ou obras necessários à execução de atividades de pesquisa, desenvolvimento e inovação (PD&I), por meio de contratação direta prevista na legislação aplicável. Define as condições de fornecimento ou execução, responsabilidades das partes, prazos, pagamentos, fiscalização e demais obrigações contratuais. Destina-se às ICTs que necessitam contratar produtos ou serviços diretamente vinculados a projetos de pesquisa e inovação. Deve ser utilizado antes da aquisição ou contratação, acompanhado do Projeto Básico ou documento equivalente que justifique sua aplicação ao projeto de PD&I.',
+  },
+  {
+    id: 'contrato-servico-com-fundacao', category: 'legal', title: 'Contrato de Serviço Tecnológico com Fundação de Apoio',
+    description: 'Formaliza a prestação de serviços técnicos especializados voltados à pesquisa, ao desenvolvimento tecnológico e à inovação, com interveniência de fundação de apoio responsável pela gestão administrativa e financeira dos recursos. Define o escopo dos serviços, as responsabilidades das partes, a forma de remuneração, a gestão dos recursos, as regras de confidencialidade e a propriedade intelectual dos resultados. Destina-se a contratações realizadas por empresas, órgãos públicos ou outras instituições que demandem competências técnico-científicas da ICT. Deve ser utilizado antes do início da execução dos serviços, acompanhado do respectivo Plano de Trabalho.',
+  },
+  {
+    id: 'contrato-servico-sem-fundacao', category: 'legal', title: 'Contrato de Serviço Tecnológico sem Fundação de Apoio',
+    description: 'Formaliza a prestação de serviços técnicos especializados voltados à pesquisa, ao desenvolvimento tecnológico e à inovação, com pagamento realizado diretamente à ICT contratada, sem intermediação de fundação de apoio. Define o escopo dos serviços, responsabilidades das partes, forma de remuneração, utilização de infraestrutura, confidencialidade e regras aplicáveis à propriedade intelectual dos resultados. Destina-se a empresas, órgãos públicos e demais instituições que demandem competências técnico-científicas da ICT para execução de atividades de inovação e pesquisa aplicada. Deve ser utilizado antes do início da execução dos serviços e acompanhado do respectivo Plano de Trabalho.',
+  },
+  {
+    id: 'cessao-patente', category: 'legal', title: 'Contrato de Cessão de Patente',
+    description: 'Formaliza a transferência definitiva dos direitos sobre uma patente ou pedido de patente da ICT para uma pessoa física ou jurídica, de forma total ou parcial, gratuita ou onerosa. Estabelece as condições de exploração comercial da tecnologia, as responsabilidades das partes, a remuneração aplicável, as regras de confidencialidade e os direitos relacionados à propriedade intelectual cedida. Destina-se à transferência de tecnologias protegidas para empresas, instituições públicas ou privadas, ou, nos casos previstos em lei, ao próprio inventor. Deve ser utilizado quando houver interesse na cessão da titularidade da tecnologia, observadas as diretrizes da Política de Inovação da ICT e a legislação de propriedade intelectual vigente.',
+  },
+  {
+    id: 'licenciamento-patente', category: 'legal', title: 'Contrato de Licenciamento com Patente',
+    description: 'Formaliza a autorização para que uma empresa ou instituição utilize e explore comercialmente uma patente ou pedido de patente de titularidade da ICT, sem transferência da propriedade intelectual. Define as condições de uso da tecnologia, os prazos para desenvolvimento e comercialização, as responsabilidades das partes, as regras de proteção da propriedade intelectual e a remuneração da ICT por meio de royalties ou outras formas de contrapartida. Destina-se à transferência de tecnologia para o setor produtivo, com ou sem exclusividade, visando sua introdução no mercado. Deve ser utilizado quando a ICT deseja manter a titularidade da patente, concedendo apenas o direito de exploração econômica da tecnologia a terceiros.',
+  },
+  {
+    id: 'transferencia-sem-patente', category: 'legal', title: 'Contrato de Transferência sem Patente',
+    description: 'Formaliza a transferência de tecnologia não patenteada, não patenteável ou de know-how da ICT para uma empresa ou instituição, permitindo sua utilização, desenvolvimento e exploração comercial. Define as condições de acesso ao conhecimento, suporte técnico, confidencialidade, remuneração, sublicenciamento e eventual compartilhamento de inovações decorrentes da tecnologia transferida. Destina-se a situações em que a tecnologia não está protegida por patente ou consiste em conhecimento técnico especializado, processos, métodos ou informações estratégicas. Deve ser utilizado quando houver interesse em transferir esse conhecimento ao setor produtivo, mantendo-se as condições contratuais de uso e exploração definidas entre as partes.',
+  },
+]
+
+function normalizeSearch(value: string) {
+  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+}
 
 function App() {
   const screenRef = useRef<HTMLElement>(null)
@@ -8,17 +116,29 @@ function App() {
   const [isResponsiblePage, setIsResponsiblePage] = useState(() => window.location.pathname === '/responsavel')
   const [isPoliciesPage, setIsPoliciesPage] = useState(() => window.location.pathname === '/politicas')
   const [isProceduresPage, setIsProceduresPage] = useState(() => window.location.pathname === '/procedimentos')
+  const [isLegalModelsPage, setIsLegalModelsPage] = useState(() => window.location.pathname === '/instrumentos-juridicos')
+  const [legalModelsFilter, setLegalModelsFilter] = useState<'all' | LegalModelCategory>('all')
+  const [legalModelsQuery, setLegalModelsQuery] = useState('')
 
   const navigate = (path: string) => {
     if (window.location.pathname !== path) window.history.pushState({}, '', path)
     setIsResponsiblePage(path === '/responsavel')
     setIsPoliciesPage(path === '/politicas')
     setIsProceduresPage(path === '/procedimentos')
+    setIsLegalModelsPage(path === '/instrumentos-juridicos')
   }
+
+  const filteredLegalModels = LEGAL_MODELS.filter((model) => {
+    const matchesCategory = legalModelsFilter === 'all' || model.category === legalModelsFilter
+    const searchableText = normalizeSearch(`${model.title} ${model.description} ${model.id}`)
+    return matchesCategory && searchableText.includes(normalizeSearch(legalModelsQuery.trim()))
+  })
+
+  const legalDocumentCount = filteredLegalModels.reduce((count, model) => count + (model.documentCount ?? 1), 0)
 
   const navigateToSection = (event: MouseEvent<HTMLAnchorElement | HTMLButtonElement> | null, sectionId: string) => {
     if (event) event.preventDefault()
-    if (isResponsiblePage || isPoliciesPage || isProceduresPage) {
+    if (isResponsiblePage || isPoliciesPage || isProceduresPage || isLegalModelsPage) {
       navigate('/')
       window.requestAnimationFrame(() => {
         screenRef.current?.querySelector<HTMLElement>(`#${sectionId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -33,13 +153,20 @@ function App() {
       setIsResponsiblePage(window.location.pathname === '/responsavel')
       setIsPoliciesPage(window.location.pathname === '/politicas')
       setIsProceduresPage(window.location.pathname === '/procedimentos')
+      setIsLegalModelsPage(window.location.pathname === '/instrumentos-juridicos')
     }
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)
   }, [])
 
+  useLayoutEffect(() => {
+    if (!isLegalModelsPage) return
+    screenRef.current?.scrollTo({ top: 0, left: 0 })
+    window.scrollTo({ top: 0, left: 0 })
+  }, [isLegalModelsPage])
+
   useEffect(() => {
-    if (isResponsiblePage || isPoliciesPage || isProceduresPage) return
+    if (isResponsiblePage || isPoliciesPage || isProceduresPage || isLegalModelsPage) return
     const screen = screenRef.current
     if (!screen) return
 
@@ -54,10 +181,10 @@ function App() {
 
     sections.forEach((section) => observer.observe(section))
     return () => observer.disconnect()
-  }, [isResponsiblePage, isPoliciesPage, isProceduresPage])
+  }, [isResponsiblePage, isPoliciesPage, isProceduresPage, isLegalModelsPage])
 
   return (
-    <main className={`screen${isResponsiblePage ? ' screen--responsible' : ''}${isPoliciesPage ? ' screen--policies' : ''}${isProceduresPage ? ' screen--procedures' : ''}`} ref={screenRef}>
+    <main className={`screen${isResponsiblePage ? ' screen--responsible' : ''}${isPoliciesPage ? ' screen--policies' : ''}${isProceduresPage ? ' screen--procedures' : ''}${isLegalModelsPage ? ' screen--legal-models' : ''}`} ref={screenRef}>
       <header className="topbar">
         <a className="brand" href="/" aria-label="NIT, SESI e SENAI — início" onClick={(event) => {
           event.preventDefault()
@@ -67,9 +194,9 @@ function App() {
         </a>
 
         <nav className="navigation" aria-label="Navegação principal">
-          <a href="#inicio" aria-current={!isResponsiblePage && !isPoliciesPage && !isProceduresPage && activeSection === 'inicio' ? 'page' : undefined} onClick={(event) => navigateToSection(event, 'inicio')}>Início</a>
-          <a href="#sobre" aria-current={!isResponsiblePage && !isPoliciesPage && !isProceduresPage && activeSection === 'sobre' ? 'page' : undefined} onClick={(event) => navigateToSection(event, 'sobre')}>Sobre</a>
-          <a href="#gestao-documentos" aria-current={!isResponsiblePage && !isPoliciesPage && !isProceduresPage && activeSection === 'gestao-documentos' ? 'page' : undefined} onClick={(event) => navigateToSection(event, 'gestao-documentos')}>Gestão de Documentos</a>
+          <a href="#inicio" aria-current={!isResponsiblePage && !isPoliciesPage && !isProceduresPage && !isLegalModelsPage && activeSection === 'inicio' ? 'page' : undefined} onClick={(event) => navigateToSection(event, 'inicio')}>Início</a>
+          <a href="#sobre" aria-current={!isResponsiblePage && !isPoliciesPage && !isProceduresPage && !isLegalModelsPage && activeSection === 'sobre' ? 'page' : undefined} onClick={(event) => navigateToSection(event, 'sobre')}>Sobre</a>
+          <a href="#gestao-documentos" aria-current={!isResponsiblePage && !isPoliciesPage && !isProceduresPage && !isLegalModelsPage && activeSection === 'gestao-documentos' ? 'page' : undefined} onClick={(event) => navigateToSection(event, 'gestao-documentos')}>Gestão de Documentos</a>
         </nav>
 
         <a className="leader-link" href="/responsavel" aria-current={isResponsiblePage ? 'page' : undefined} onClick={(event) => {
@@ -79,7 +206,7 @@ function App() {
       </header>
 
       <section className="hero" id="inicio" aria-label="Apresentação do NIT">
-        <ParticleLogo responsibleMode={isResponsiblePage} policiesMode={isPoliciesPage} proceduresMode={isProceduresPage} />
+        <ParticleLogo responsibleMode={isResponsiblePage} policiesMode={isPoliciesPage} proceduresMode={isProceduresPage} legalModelsMode={isLegalModelsPage} />
         <p className="subtitle">Núcleo de Inovação Tecnológica</p>
 
         <div className="scroll-hint" aria-label="Conheça o NIT">
@@ -216,7 +343,7 @@ function App() {
               <span className="document-category">MODELOS JURÍDICOS PARA INOVAÇÃO</span>
               <h2>Modelos de Instrumentos jurídicos</h2>
               <p>Instrumentos jurídicos de CT&amp;I baseados nas referências da AGU e adaptados para o SESI/SENAI.</p>
-              <button className="document-card-action" type="button" aria-label="Modelos de Instrumentos jurídicos: destino ainda não definido">→</button>
+              <button className="document-card-action" type="button" aria-label="Acessar Modelos de Instrumentos Jurídicos" onClick={() => navigate('/instrumentos-juridicos')}>→</button>
             </article>
           </div>
         </div>
@@ -326,6 +453,84 @@ function App() {
             </article>
           </div>
         </div>
+      </section>
+
+      <section className="legal-models-section" aria-labelledby="legal-models-title">
+        <div className="legal-models-content">
+          <header className="legal-models-heading">
+            <span className="legal-models-badge">BIBLIOTECA JURÍDICA &amp; MINUTAS AGU</span>
+            <div className="legal-models-title-wrap">
+              <h1 id="legal-models-title" className="legal-models-title-trigger" tabIndex={0} aria-describedby="legal-models-info">
+                Modelos de Instrumentos Jurídicos <span aria-hidden="true">📑</span>
+              </h1>
+              <p className="legal-models-intro" id="legal-models-info" role="tooltip">
+                Os modelos disponibilizados nesta página foram elaborados com base nas minutas e orientações publicadas pela
+                Advocacia-Geral da União (AGU) para aplicação do Marco Legal de Ciência, Tecnologia e Inovação (MLCT&amp;I).
+                Estes documentos foram adaptados para utilização no âmbito do SESI Goiás e do SENAI Goiás, contemplando ajustes
+                de identidade visual sem prejuízo às diretrizes jurídicas de referência. O objetivo desta biblioteca é promover
+                maior padronização, segurança jurídica e agilidade na formalização de instrumentos relacionados a projetos de
+                pesquisa, desenvolvimento, inovação, transferência de tecnologia e demais parcerias estratégicas.
+              </p>
+            </div>
+            <p className="legal-models-lead">
+              Biblioteca de modelos e minutas jurídicas para formalização de parcerias, projetos e instrumentos de inovação,
+              adaptados para utilização no SESI Goiás e SENAI Goiás.
+            </p>
+            <p className="legal-models-source">
+              Fonte:{' '}
+              <a href="https://www.gov.br/agu/pt-br/composicao/procuradoria-geral-federal-1/subprocuradoria-federal-de-consultoria-juridica/ciencia-tecnologia-e-inovacao/cp-ct-i" target="_blank" rel="noreferrer">
+                Advocacia-Geral da União (AGU) — Ciência, Tecnologia e Inovação
+              </a>
+            </p>
+          </header>
+
+          <div className="legal-models-toolbar">
+            <label className="legal-search">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8" /><path d="m16 16 4.5 4.5" /></svg>
+              <input
+                type="search"
+                value={legalModelsQuery}
+                onChange={(event) => setLegalModelsQuery(event.target.value)}
+                placeholder="Buscar modelo por nome, número ou finalidade..."
+                aria-label="Buscar modelo por nome, número ou finalidade"
+              />
+            </label>
+
+            <div className="legal-filter-chips" role="tablist" aria-label="Filtrar modelos por categoria">
+              <button type="button" role="tab" aria-selected={legalModelsFilter === 'all'} className={legalModelsFilter === 'all' ? 'is-active' : ''} onClick={() => setLegalModelsFilter('all')}>Todos</button>
+              <button type="button" role="tab" aria-selected={legalModelsFilter === 'models'} className={legalModelsFilter === 'models' ? 'is-active' : ''} onClick={() => setLegalModelsFilter('models')}>Modelos de Instrumentos e Finalidades</button>
+              <button type="button" role="tab" aria-selected={legalModelsFilter === 'legal'} className={legalModelsFilter === 'legal' ? 'is-active' : ''} onClick={() => setLegalModelsFilter('legal')}>Instrumentos do Marco Legal</button>
+            </div>
+
+            <p className="legal-results-count" aria-live="polite">
+              {legalDocumentCount} {legalDocumentCount === 1 ? 'documento' : 'documentos'} em {filteredLegalModels.length} {filteredLegalModels.length === 1 ? 'card' : 'cards'}
+            </p>
+          </div>
+
+          {filteredLegalModels.length ? (
+            <div className="legal-models-grid">
+              {filteredLegalModels.map((model) => (
+                <article className="legal-model-card" key={model.id}>
+                  <span className="legal-model-category">
+                    {model.category === 'models' ? 'MODELOS DE INSTRUMENTOS E FINALIDADES' : 'INSTRUMENTOS DO MARCO LEGAL'}
+                  </span>
+                  {model.documentCount && <span className="legal-model-count">3 documentos</span>}
+                  <h2>{model.title}</h2>
+                  <p>{model.description}</p>
+                  <button className="legal-model-open" type="button" disabled title="Link do documento ainda não informado" aria-label={`Abrir ${model.title}: link ainda não informado`}>
+                    <span aria-hidden="true">→</span>
+                  </button>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <p className="legal-empty-state">Nenhum instrumento encontrado. Tente outro termo ou filtro.</p>
+          )}
+        </div>
+
+        <button className="legal-back-button" type="button" onClick={() => navigateToSection(null, 'gestao-documentos')}>
+          <span aria-hidden="true">←</span> Voltar para Gestão de Documentos
+        </button>
       </section>
     </main>
   )

@@ -142,10 +142,12 @@ export function ParticleLogo({
   responsibleMode = false,
   policiesMode = false,
   proceduresMode = false,
+  legalModelsMode = false,
 }: {
   responsibleMode?: boolean
   policiesMode?: boolean
   proceduresMode?: boolean
+  legalModelsMode?: boolean
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const responsibleModeRef = useRef(responsibleMode)
@@ -154,6 +156,8 @@ export function ParticleLogo({
   policiesModeRef.current = policiesMode
   const proceduresModeRef = useRef(proceduresMode)
   proceduresModeRef.current = proceduresMode
+  const legalModelsModeRef = useRef(legalModelsMode)
+  legalModelsModeRef.current = legalModelsMode
 
   useEffect(() => {
     const container = containerRef.current
@@ -196,6 +200,7 @@ export function ParticleLogo({
       '/images/Fundo_Tela02.jpg',
       '/images/Fundo_Tela03.jpg',
       '/images/Fundo_Tela04.jpg',
+      '/images/Fundo_Tela05.jpg',
     ].map((src) => {
       const image = new Image()
       image.src = src
@@ -415,9 +420,12 @@ export function ParticleLogo({
       const masks = (points.userData as { targetMasks?: Float32Array[] }).targetMasks ?? targetMasks
       const policiesStage = 3
       const proceduresStage = 4
-      const responsibleStage = 5
+      const legalModelsStage = 5
+      const responsibleStage = 6
       const targetProgress = responsibleModeRef.current && masks[responsibleStage]
         ? responsibleStage
+        : legalModelsModeRef.current && masks[legalModelsStage]
+          ? legalModelsStage
         : proceduresModeRef.current && masks[proceduresStage]
           ? proceduresStage
           : policiesModeRef.current && masks[policiesStage]
@@ -578,7 +586,7 @@ export function ParticleLogo({
       buildParticles()
       scheduleBackgroundTargets()
     }
-    const backgroundFileNames = ['/images/Fundo_Tela01.jpg', '/images/Fundo_Tela02.jpg', '/images/Fundo_Tela03.jpg', '/images/Fundo_Tela04.jpg']
+    const backgroundFileNames = ['/images/Fundo_Tela01.jpg', '/images/Fundo_Tela02.jpg', '/images/Fundo_Tela03.jpg', '/images/Fundo_Tela04.jpg', '/images/Fundo_Tela05.jpg']
     backgroundImages.forEach((image, index) => {
       image.onload = scheduleBackgroundTargets
       image.onerror = () => {
